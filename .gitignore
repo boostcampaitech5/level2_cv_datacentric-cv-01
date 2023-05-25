@@ -1,4 +1,5 @@
-.code/model.py
-.code/loss.py
-.code/east_dataset.py
-.code/detect.py
+.input/code/model.py
+.input/code/loss.py
+.input/code/east_dataset.py
+.input/code/detect.py
+.input/data
