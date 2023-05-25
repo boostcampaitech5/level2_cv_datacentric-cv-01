@@ -11,6 +11,9 @@ east_dataset.py<br>
 detect.py<br>
 
 ### Requirements
+python==3.8.5
+pandas==2.0.1
+torch==1.7.1
 lanms==1.0.2
 numpy==1.21.3
 opencv-python==4.5.4.58
