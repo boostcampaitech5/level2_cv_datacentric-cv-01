@@ -38,15 +38,12 @@ albumentations==1.1.0
 - 변수 - Snake case(명사)
 
 ### Git Flow
->main
->├── dev
-
->│   ├── kbh
-
->│   ├── kdk
-
->│   ├── ltg
-
->│   ├── jhj
-
->│   ├── lhm
+```
+main
+└── dev
+    ├── kbh
+    ├── kdk
+    ├── ltg
+    ├── jhj
+    └── lhm
+```
