@@ -36,3 +36,12 @@ albumentations==1.1.0
 - Class - 대문자 Camel case (Pascal case)
 - def - Snake case(동사_명사)
 - 변수 - Snake case(명사)
+
+### Git Flow
+>main
+>├── dev
+>│   ├── kbh
+>│   ├── kdk
+>│   ├── ltg
+>│   ├── jhj
+>│   ├── lhm
