@@ -144,7 +144,7 @@ def do_training(
 
 def main(args):
     # print(args.device)
-    seed=311
+    seed=5025
     set_seed(seed)
     do_training(**args.__dict__)
 
