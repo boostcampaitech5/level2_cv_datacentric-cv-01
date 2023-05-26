@@ -10,6 +10,18 @@ loss.py<br>
 east_dataset.py<br>
 detect.py<br>
 
+### Requirements
+python==3.8.5
+pandas==2.0.1
+torch==1.7.1
+lanms==1.0.2
+numpy==1.21.3
+opencv-python==4.5.4.58
+shapely==1.7.1
+tqdm==4.62.3
+matplotlib
+albumentations==1.1.0
+
 ### Team Role
 - 추가 하고 싶은 기능 부담 갖지말고 건의하기
 - wandb 개인 repo에서 팀프로젝트 repo로 옮기기
@@ -24,3 +36,14 @@ detect.py<br>
 - Class - 대문자 Camel case (Pascal case)
 - def - Snake case(동사_명사)
 - 변수 - Snake case(명사)
+
+### Git Flow
+```
+main
+└── dev
+    ├── kbh
+    ├── kdk
+    ├── ltg
+    ├── jhj
+    └── lhm
+```
