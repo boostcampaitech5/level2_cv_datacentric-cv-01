@@ -16,6 +16,12 @@ from model import EAST
 
 from utils import set_seed
 
+from torch.utils.data import random_split
+from deteval import calc_deteval_metrics
+from metric import map_to_bbox
+from copy import deepcopy
+import numpy as np
+
 def parse_args():
     parser = ArgumentParser()
 
@@ -87,9 +93,24 @@ def do_training(
     )
     dataset = EASTDataset(dataset)
     num_batches = math.ceil(len(dataset) / batch_size)
+
+    val_size = 8
+    train_size = len(dataset)- val_size
+    train_dataset, val_dataset = random_split(dataset, [train_size,val_size])
+
     train_loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers
     )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers
+    )   
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = EAST()
@@ -132,6 +153,31 @@ def do_training(
             )
         )
 
+        print(f'[Validation {epoch+1}]')
+        val_start = time.time()
+        with torch.no_grad():
+            val_precision=[]
+            val_recall=[]
+            val_f1 = []
+            for img, gt_score_map, gt_geo_map, roi_mask in val_loader:
+                score, geo = model(img.to(device))
+                score, geo = deepcopy(score), deepcopy(geo)
+                pred_bboxes = map_to_bbox(score.cpu().numpy(), geo.cpu().numpy())
+                gt_score, gt_geo = deepcopy(gt_score_map), deepcopy(gt_geo_map)
+                gt_bboxes = map_to_bbox(gt_score.cpu().numpy(), gt_geo.cpu().numpy())
+
+                deteval = calc_deteval_metrics(dict(zip([range(len(pred_bboxes))], pred_bboxes)),
+                                               dict(zip([range(len(gt_bboxes))], gt_bboxes)))
+                val_precision.append(deteval['total']['precision'])
+                val_recall.append(deteval['total']['recall'])
+                val_f1.append(deteval['total']['hmean'])
+
+            precision = np.sum(val_precision) / len(val_precision)
+            recall = np.sum(val_recall) / len(val_recall)
+            f1 = np.sum(val_f1) / len(val_f1)
+            print(f'F1 : {f1:.4f} | Precision : {precision:.4f} | Recall : {recall:.4f}')
+            print(f'Validation Elapsed time: {timedelta(seconds=time.time() - val_start)}')
+
         if (epoch + 1) % save_interval == 0:
             if not osp.exists(model_dir):
                 os.makedirs(model_dir)
@@ -144,8 +190,8 @@ def do_training(
 
 def main(args):
     # print(args.device)
-    seed=311
-    set_seed(seed)
+    # seed=311
+    # set_seed(seed)
     do_training(**args.__dict__)
 
 
