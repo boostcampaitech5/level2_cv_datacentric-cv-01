@@ -1,4 +1,4 @@
-from PIL import Image
+from PIL import Image,ImageDraw
 import os.path as osp
 import math
 import json
@@ -338,6 +338,15 @@ def OnlyBlack(img):
 
     return new_img
 
+def AnotationMasking(img,vertices):
+    draw = ImageDraw.Draw(img)
+    for v in vertices:
+        draw.polygon(v, fill=(0,0,0))
+
+    
+
+
+
 aug_with_bbox = ['Resize','Rotate','AdjustHeight']
 aug_with_label = ['Crop']
 aug_album_img = ['Normalize','ColorJitter','Sharpen','Emboss','CLAHE','RandomShadow']
@@ -354,7 +363,7 @@ aug_dict = {
     'OnlyBlack': OnlyBlack,
     'Sharpen': A.Sharpen(),
     'CLAHE': A.CLAHE(p=1),
-    'RandomShadow': A.RandomShadow(num_shadows_upper=5,p=1)
+    'RandomShadow': A.RandomShadow(p=1)
 }
 def process_augmentation(img,vertices,labels,aug_list:list):
     """aug_list에 따른 자동 augmentation 적용 함수
