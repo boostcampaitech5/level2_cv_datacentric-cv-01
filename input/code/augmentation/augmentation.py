@@ -354,9 +354,30 @@ aug_dict = {
     'OnlyBlack': OnlyBlack,
     'Sharpen': A.Sharpen(),
     'CLAHE': A.CLAHE(p=1),
-    'RandomShadow': A.RandomShadow(p=1)
+    'RandomShadow': A.RandomShadow(num_shadows_upper=5,p=1)
 }
 def process_augmentation(img,vertices,labels,aug_list:list):
+    """aug_list에 따른 자동 augmentation 적용 함수
+        aug_wth_bbox: bbox도 변환이 필요한 augmentation\n
+        aug_with_label: bbox와 label의 변환이 필요한 augmentation\n
+        aug_album_img: Albumentation을 이용한 단순 이미지 변환\n
+        aug_only_img: torchvision을 이용한 단순 이미지 변환\n
+        Albumentation augmentation와 다른 augmentation은 섞어서 사용할 수 없습니다.\n
+        torchvision aug - ToNumpy aug - Albumentation aug순으로 사용해야 합니다.\n
+        albumentation augmentation을 적용하기 전에 ToNumpy로 변환해주어야 합니다.\n
+    Args:
+        img (_type_): PIL.Image로 open한 이미지
+        vertices (_type_): annotation box 정보
+        labels (_type_): 
+        aug_list (list): 적용할 augmentation 순서
+
+    Raises:
+        NotImplementedError: 추가되지 않은 augmentation에 대한 raise
+
+    Returns:
+        _type_: img, vertices, labels
+    """    
+
     for augmentation in aug_list:
         if augmentation in aug_with_bbox:
             img,vertices = aug_dict[augmentation](img=img,vertices=vertices)
