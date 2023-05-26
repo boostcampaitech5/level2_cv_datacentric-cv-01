@@ -68,12 +68,22 @@ def do_training(
     save_interval,
     ignore_tags,
 ):
+    aug_list = [
+        "Resize",
+        "AdjustHeight",
+        "Rotate",
+        "Crop",
+        "ToNumpy",
+        "ColorJitter",
+        "Normalize",
+    ]
     dataset = SceneTextDataset(
         data_dir,
         split="train",
         image_size=image_size,
         crop_size=input_size,
         ignore_tags=ignore_tags,
+        aug_list=aug_list,
     )
     dataset = EASTDataset(dataset)
     num_batches = math.ceil(len(dataset) / batch_size)

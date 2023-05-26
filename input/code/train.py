@@ -16,6 +16,7 @@ from model import EAST
 
 from utils import set_seed
 
+
 def parse_args():
     parser = ArgumentParser()
 
@@ -144,7 +145,7 @@ def do_training(
 
 def main(args):
     # print(args.device)
-    seed=311
+    seed = 5025
     set_seed(seed)
     do_training(**args.__dict__)
 
