@@ -1,4 +1,3 @@
-data/
 input/code/__pycache__/
 input/code/pths/
 input/code/trained_models/
@@ -11,4 +10,6 @@ input/code/inference.py
 input/code/loss.py
 input/code/model.py
 input/code/train.py
-input/code/predictions/
+input/code/._*
+input/backup
+input/data
