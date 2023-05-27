@@ -10,4 +10,7 @@ input/code/loss.py
 input/code/model.py
 input/code/._*
 input/backup
-input/data
+input/data/
+input/code/streamlit/__pycache__
+input/code/streamlit/.ipynb_checkpoints
+input/code/streamlit/saved_img_with_bbox
