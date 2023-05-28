@@ -159,15 +159,28 @@ def do_training(
             val_precision=[]
             val_recall=[]
             val_f1 = []
+
+            org_sizes = []
             for img, gt_score_map, gt_geo_map, roi_mask in val_loader:
+                # get original sizes from image batch
+                for image in img:
+                    org_sizes.append(image.shape[:2])
+                
+                # predict 
                 score, geo = model(img.to(device))
                 score, geo = deepcopy(score), deepcopy(geo)
-                pred_bboxes = map_to_bbox(score.cpu().numpy(), geo.cpu().numpy())
-                gt_score, gt_geo = deepcopy(gt_score_map), deepcopy(gt_geo_map)
-                gt_bboxes = map_to_bbox(gt_score.cpu().numpy(), gt_geo.cpu().numpy())
 
+                # extract bboxes from score map and geo map
+                pred_bboxes = map_to_bbox(score.cpu().numpy(), geo.cpu().numpy(), 
+                                          input_size, org_sizes)
+                gt_score, gt_geo = deepcopy(gt_score_map), deepcopy(gt_geo_map)
+                gt_bboxes = map_to_bbox(gt_score.cpu().numpy(), gt_geo.cpu().numpy(), 
+                                        input_size, org_sizes)
+
+                # calculate metric by deteval with bboxes
                 deteval = calc_deteval_metrics(dict(zip([range(len(pred_bboxes))], pred_bboxes)),
                                                dict(zip([range(len(gt_bboxes))], gt_bboxes)))
+                
                 val_precision.append(deteval['total']['precision'])
                 val_recall.append(deteval['total']['recall'])
                 val_f1.append(deteval['total']['hmean'])
