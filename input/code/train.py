@@ -84,6 +84,7 @@ def do_training(
         crop_size=input_size,
         ignore_tags=ignore_tags,
         aug_list=aug_list,
+        polygon_masking=False
     )
     dataset = EASTDataset(dataset)
     num_batches = math.ceil(len(dataset) / batch_size)

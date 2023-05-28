@@ -11,6 +11,46 @@ from torch.utils.data import Dataset
 from shapely.geometry import Polygon
 from augmentation.augmentation import *
 
+
+def xy_to_tuple(v):
+    new_v = list(map(tuple,v))
+    return new_v
+def xy_to_xandy(v):
+    x,y=list(map(list,zip(*v)))
+    return x,y
+    
+def find_min_box_from_polygon(vertices):
+    rot_v=np.array(vertices)
+    vertices.append(vertices[0])
+    x,y=xy_to_xandy(rot_v)
+    angle = []
+    for i in range(len(y)-1):
+        y[i]=-(y[i]-y[i+1])
+        x[i]=-(x[i]-x[i+1])
+    x.pop()
+    y.pop()
+    angle= -np.arctan2(np.array(y),np.array(x))
+    min_area = None
+    target_angle = None
+    for ang in angle:
+        rotate_mat = np.array([[np.cos(ang),-np.sin(ang)],
+                            [np.sin(ang),np.cos(ang)]])
+        new_v = rotate_mat@rot_v.T
+        poly_area = (np.max(new_v[0])-np.min(new_v[0])) * (np.max(new_v[1])-np.min(new_v[1]) )
+        if min_area==None or poly_area<min_area:
+            min_area=poly_area
+            min_bbox = np.array([[np.min(new_v[0]),np.min(new_v[1])],
+                            [np.max(new_v[0]),np.min(new_v[1])],
+                            [np.max(new_v[0]),np.max(new_v[1])],
+                            [np.min(new_v[0]),np.max(new_v[1])]])
+            target_angle = ang
+    new_bbox = min_bbox
+    reverse_mat = np.array([[np.cos(target_angle),np.sin(target_angle)],
+                        [-np.sin(target_angle),np.cos(target_angle)]])
+    new_polygon = (reverse_mat)@new_bbox.T
+    new_polygon = list(map(list,zip(*new_polygon.tolist())))
+    return new_polygon
+
 def generate_roi_mask(image, vertices, labels):
     mask = np.ones(image.shape[:2], dtype=np.float32)
     ignored_polys = []
@@ -60,7 +100,7 @@ class SceneTextDataset(Dataset):
                  ignore_tags=[],
                  ignore_under_threshold=10,
                  drop_under_threshold=1,
-                 polygon_masking=True,
+                 polygon_masking=False,
                  aug_list=[]):
         with open(osp.join(root_dir, 'ufo/{}.json'.format(split)), 'r') as f:
             anno = json.load(f)
@@ -97,8 +137,12 @@ class SceneTextDataset(Dataset):
             # samples with number of points greater than 4
             if ignore_sample :
                 continue
-            if num_pts > 4 and self.polygon_masking:
-                masking_vertices.append(list(map(tuple,word_info['points'])))
+            if num_pts > 4:
+                if self.polygon_masking:
+                    masking_vertices.append(list(map(tuple,word_info['points'])))
+                elif True:
+                    vertices.append(find_min_box_from_polygon(word_info['points']))
+                    labels.append(int(not word_info['illegibility']))
                 continue
             vertices.append(np.array(word_info['points']).flatten())
             labels.append(int(not word_info['illegibility']))
