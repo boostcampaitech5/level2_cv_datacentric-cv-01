@@ -120,6 +120,9 @@ def do_training(
         optimizer, milestones=[max_epoch // 2], gamma=0.1
     )
 
+    if not osp.exists(model_dir):
+        os.makedirs(model_dir)
+
     model.train()
     for epoch in range(max_epoch):
         epoch_loss, epoch_start = 0, time.time()
@@ -191,19 +194,26 @@ def do_training(
             print(f'F1 : {f1:.4f} | Precision : {precision:.4f} | Recall : {recall:.4f}')
             print(f'Validation Elapsed time: {timedelta(seconds=time.time() - val_start)}')
 
-        if (epoch + 1) % save_interval == 0:
-            if not osp.exists(model_dir):
-                os.makedirs(model_dir)
+        if epoch == 0:  # loss_record 초기화
+            loss_record = epoch_loss / num_batches
 
-            ckpt_fpath = osp.join(model_dir, "latest.pth")
+        if loss_record > (epoch_loss / num_batches):  # best 모델 저장
+            ckpt_fpath = osp.join(model_dir, "best.pth")
             torch.save(model.state_dict(), ckpt_fpath)
+            loss_record = epoch_loss / num_batches
+
+        if (epoch + 1) % save_interval == 0:
             ckpt_fpath = osp.join(model_dir, f"epoch{epoch+1}.pth")
+            torch.save(model.state_dict(), ckpt_fpath)
+
+        if epoch + 1 == max_epoch:  # 마지막 모델 저장
+            ckpt_fpath = osp.join(model_dir, "latest.pth")
             torch.save(model.state_dict(), ckpt_fpath)
 
 
 def main(args):
-    print(args.device)
-    seed=5025
+    # print(args.device)
+    seed = 5025
     set_seed(seed)
     do_training(**args.__dict__)
 
