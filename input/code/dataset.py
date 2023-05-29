@@ -50,6 +50,14 @@ def find_min_box_from_polygon(vertices):
     new_polygon = (reverse_mat)@new_bbox.T
     new_polygon = list(map(list,zip(*new_polygon.tolist())))
     return new_polygon
+def find_min_box_from_polygon2(vertices):
+    numpy_v = np.array(vertices).T
+    min_bbox = np.array([[np.min(numpy_v[0]),np.min(numpy_v[1])],
+                            [np.max(numpy_v[0]),np.min(numpy_v[1])],
+                            [np.max(numpy_v[0]),np.max(numpy_v[1])],
+                            [np.min(numpy_v[0]),np.max(numpy_v[1])]])
+    return min_bbox
+
 
 def generate_roi_mask(image, vertices, labels):
     mask = np.ones(image.shape[:2], dtype=np.float32)
@@ -140,8 +148,8 @@ class SceneTextDataset(Dataset):
             if num_pts > 4:
                 if self.polygon_masking:
                     masking_vertices.append(list(map(tuple,word_info['points'])))
-                elif True:
-                    vertices.append(find_min_box_from_polygon(word_info['points']))
+                elif False:
+                    vertices.append(find_min_box_from_polygon2(word_info['points']).flatten())
                     labels.append(int(not word_info['illegibility']))
                 continue
             vertices.append(np.array(word_info['points']).flatten())
@@ -165,6 +173,9 @@ class SceneTextDataset(Dataset):
                 image = image.convert('RGB')
             image = np.array(image)
     
+        if isinstance(image,Image.Image):
+            image = np.array(image)
+
         word_bboxes = np.reshape(vertices, (-1, 4, 2))
         roi_mask = generate_roi_mask(image, vertices, labels)
 
