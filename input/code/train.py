@@ -18,9 +18,10 @@ from utils import set_seed
 
 from torch.utils.data import random_split
 from deteval import calc_deteval_metrics
-from metric import map_to_bbox
+from metric import map_to_bbox, save_val_result
 from copy import deepcopy
 import numpy as np
+import wandb
 
 def parse_args():
     parser = ArgumentParser()
@@ -51,6 +52,7 @@ def parse_args():
         type=list,
         default=["masked", "excluded-region", "maintable", "stamp"],
     )
+    parser.add_argument("--val_interval", type=int, default=5)
 
     args = parser.parse_args()
 
@@ -72,6 +74,7 @@ def do_training(
     max_epoch,
     save_interval,
     ignore_tags,
+    val_interval,
 ):
     aug_list = [
         "Resize",
@@ -123,10 +126,21 @@ def do_training(
     if not osp.exists(model_dir):
         os.makedirs(model_dir)
 
+    wandb_config = {"epochs": max_epoch, "batch_size": batch_size,}
+    wandb.init(project="level2) DataCentric",config=wandb_config)
+
+    wandb_artifact = wandb.Artifact('ocr', type='model')
+    wandb_artifact_paths = os.path.join(wandb.run.dir, "artifacts/")
+    wandb_artifact.add_dir(wandb_artifact_paths)
+    wandb.log_artifact(wandb_artifact)
+
     model.train()
     for epoch in range(max_epoch):
         epoch_loss, epoch_start = 0, time.time()
         with tqdm(total=num_batches) as pbar:
+            cls_losses = []
+            angle_losses = []
+            iou_losses = []
             for img, gt_score_map, gt_geo_map, roi_mask in train_loader:
                 pbar.set_description("[Epoch {}]".format(epoch + 1))
 
@@ -147,6 +161,18 @@ def do_training(
                     "IoU loss": extra_info["iou_loss"],
                 }
                 pbar.set_postfix(val_dict)
+                cls_losses.append(extra_info["cls_loss"])
+                angle_losses.append(extra_info["angle_loss"])
+                iou_losses.append(extra_info["iou_loss"])
+
+        cls_loss = np.sum(cls_losses) / len(cls_losses)
+        angle_loss = np.sum(angle_losses) / len(angle_losses)
+        iou_loss = np.sum(iou_losses) / len(iou_losses)
+        wandb.log({
+            'Train Cls Loss': cls_loss,
+            'Train Angle Loss': angle_loss,
+            'Train IoU Loss': iou_loss,
+        })
 
         scheduler.step()
 
@@ -156,9 +182,11 @@ def do_training(
             )
         )
 
-        print(f'[Validation {epoch+1}]')
-        val_start = time.time()
-        with torch.no_grad():
+        # validation이 너무 오래 걸려서 val_interval 마다 진행
+        if (epoch + 1) % 1 == 0:
+
+            print(f'[Validation {epoch+1}]')
+            val_start = time.time()
             val_precision=[]
             val_recall=[]
             val_f1 = []
@@ -167,7 +195,8 @@ def do_training(
                 # get original sizes from image batch
                 
                 # predict 
-                score, geo = model(img.to(device))
+                with torch.no_grad():
+                    score, geo = model(img.to(device))
                 score, geo = deepcopy(score), deepcopy(geo)
 
                 # extract bboxes from score map and geo map
@@ -177,17 +206,25 @@ def do_training(
 
                 # calculate metric by deteval with bboxes
                 deteval = calc_deteval_metrics(dict(zip([range(len(pred_bboxes))], pred_bboxes)),
-                                               dict(zip([range(len(gt_bboxes))], gt_bboxes)))
-                
+                                                dict(zip([range(len(gt_bboxes))], gt_bboxes)))
+
                 val_precision.append(deteval['total']['precision'])
                 val_recall.append(deteval['total']['recall'])
                 val_f1.append(deteval['total']['hmean'])
+                
+                save_val_result(img.cpu().numpy(), score.cpu().numpy(), 
+                                geo.cpu().numpy(), pred_bboxes, wandb_artifact_paths)
 
             precision = np.sum(val_precision) / len(val_precision)
             recall = np.sum(val_recall) / len(val_recall)
             f1 = np.sum(val_f1) / len(val_f1)
             print(f'F1 : {f1:.4f} | Precision : {precision:.4f} | Recall : {recall:.4f}')
             print(f'Validation Elapsed time: {timedelta(seconds=time.time() - val_start)}')
+            wandb.log({
+                    'Precision': precision,
+                    'Recall': recall,
+                    'F1' : f1,
+            })
 
         if epoch == 0:  # loss_record 초기화
             loss_record = epoch_loss / num_batches
@@ -204,6 +241,8 @@ def do_training(
         if epoch + 1 == max_epoch:  # 마지막 모델 저장
             ckpt_fpath = osp.join(model_dir, "latest.pth")
             torch.save(model.state_dict(), ckpt_fpath)
+
+    wandb.finish()
 
 
 def main(args):

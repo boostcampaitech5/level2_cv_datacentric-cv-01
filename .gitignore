@@ -9,5 +9,7 @@ input/code/inference.py
 input/code/loss.py
 input/code/model.py
 input/code/._*
+input/code/wandb/
+input/code/augmentation/__pycache__/
 input/backup
 input/data
