@@ -323,18 +323,22 @@ def ToNumpy(img:Image.Image):
     img = np.array(img)
     return img
 
-def OnlyBlack(img):
-    if img.dtype==np.uint8:
+def OnlyBlack(img,cal_type="Sum",cut_val=300):
+    if cal_type=='Sum':
         pixel_sum = np.sum(img,axis=2)
-        mask = np.where(pixel_sum>300,True,False)
+    elif cal_type=='Max':
+        pixel_sum = np.max(img,axis=2)
+    elif cal_type=='Avg':
+        pixel_sum = np.average(img,axis=2)
+    if img.dtype==np.uint8:
+        mask = np.where(pixel_sum>cut_val,True,False)
         new_img = np.zeros(img.shape,dtype=np.uint8)
-        print(img.shape,mask.shape)
         new_img[mask]=250
     elif img.dtype==np.float32:
-        pixel_sum = np.average(img,axis=2)
-        mask = np.where(pixel_sum>150/255,True,False)
+        mask = np.where(pixel_sum>cut_val/255,True,False)
         new_img = np.zeros(img.shape,dtype=np.uint8)
         new_img[mask]=250/255
+
 
     return new_img
 
@@ -344,26 +348,31 @@ def AnotationMasking(img,vertices):
         draw.polygon(v, fill=(0,0,0))
 
     
-
+with open('./aug_config.json','r') as f:
+    aug_config = json.load(f)
 
 
 aug_with_bbox = ['Resize','Rotate','AdjustHeight']
 aug_with_label = ['Crop']
-aug_album_img = ['Normalize','ColorJitter','Sharpen','Emboss','CLAHE','RandomShadow']
+aug_album_img = ['Normalize','ColorJitter','Sharpen','Emboss','CLAHE','RandomShadow','MultiRandomShadow']
 aug_only_img = ['ToNumpy','OnlyBlack']
 aug_dict = {
-    'Resize': partial(resize_img,size=2048),
-    'Rotate': rotate_img,
-    'Crop': partial(crop_img,length=1024),
-    'ColorJitter': A.ColorJitter(0.5,0.5,0.5,0.25),
-    'Normalize': A.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)),
-    'Emboss': A.Emboss(p=1),
-    'AdjustHeight': partial(adjust_height,ratio=0.2),
+    'Resize': partial(resize_img,**aug_config['Resize']),
+    'Rotate': partial(rotate_img,**aug_config['Rotate']),
+    'Crop': partial(crop_img,**aug_config['Crop']),
+    'ColorJitter': A.ColorJitter(**aug_config['ColorJitter']),
+    'Normalize': A.Normalize(**aug_config['Normalize']),
+    'Emboss': A.Emboss(**aug_config['Emboss']),
+    'AdjustHeight': partial(adjust_height,**aug_config['AdjustHeight']),
     'ToNumpy': ToNumpy,
-    'OnlyBlack': OnlyBlack,
-    'Sharpen': A.Sharpen(),
-    'CLAHE': A.CLAHE(p=1),
-    'RandomShadow': A.RandomShadow(p=1)
+    'OnlyBlack': partial(OnlyBlack,**aug_config['OnlyBlack']),
+    'Sharpen': A.Sharpen(**aug_config['Sharpen']),
+    'CLAHE': A.CLAHE(**aug_config['CLAHE']),
+    'RandomShadow': A.RandomShadow(**aug_config['RandomShadow']),
+    'MultiRandomShadow': [A.RandomShadow((0,0.0,0.5,0.5)),
+                        A.RandomShadow((0.5,0.0,1,0.5)),
+                        A.RandomShadow((0,0.5,0.5,1)),
+                        A.RandomShadow((0.5,0.5,1,1))]
 }
 def process_augmentation(img,vertices,labels,aug_list:list):
     """aug_list에 따른 자동 augmentation 적용 함수
@@ -393,7 +402,10 @@ def process_augmentation(img,vertices,labels,aug_list:list):
         elif augmentation in aug_with_label:
             img,vertices = aug_dict[augmentation](img=img, vertices=vertices, labels=labels)
         elif augmentation in aug_album_img:
-            img = A.Compose([aug_dict[augmentation]])(image=img)['image']
+            if isinstance(aug_dict[augmentation],list):
+                img = A.Compose(aug_dict[augmentation])(image=img)['image']
+            else:
+                img = A.Compose([aug_dict[augmentation]])(image=img)['image']
         elif augmentation in aug_only_img:
             img = aug_dict[augmentation](img)
         else:
@@ -409,4 +421,4 @@ def process_augmentation(img,vertices,labels,aug_list:list):
 
 
 if __name__=='__main__':
-    pass
+    print(aug_dict)
