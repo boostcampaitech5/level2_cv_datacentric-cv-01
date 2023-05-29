@@ -85,6 +85,7 @@ def do_training(
         crop_size=input_size,
         ignore_tags=ignore_tags,
         aug_list=aug_list,
+        polygon_masking=False
     )
     dataset = EASTDataset(dataset)
     num_batches = math.ceil(len(dataset) / batch_size)
@@ -155,7 +156,7 @@ def do_training(
 
 def main(args):
     # print(args.device)
-    seed = 5025
+    seed=5025
     set_seed(seed)
     do_training(**args.__dict__)
 

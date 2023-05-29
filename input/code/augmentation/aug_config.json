@@ -1,0 +1,15 @@
+{
+    "Resize": {"size":2048},
+    "Rotate": {"angle_range":10},
+    "Crop": {"length":1024},
+    "ColorJitter":{"brightness":0.2, "contrast":0.2,"saturation":0.2,"hue":0.2,"p":0.5},
+    "Normalize": {"mean":[0.5, 0.5, 0.5], "std":[0.5, 0.5, 0.5]},
+    "Emboss": {"alpha":[0.2,0.5],"strength":[0.2,0.7],"p":1},
+    "AdjustHeight": {"ratio":0.2},
+    "ToNumpy": {},
+    "OnlyBlack": {"cal_type":"Sum","cut_val":300},
+    "Sharpen": {"alpha":[0.2, 0.5], "lightness":[0.5, 1.0], "p":0.5},
+    "CLAHE": { "clip_limit":4.0, "tile_grid_size":[8, 8], "p":0.5},
+    "RandomShadow": {"shadow_roi":[0,0.5,0.5,1],"num_shadows_lower":1,"num_shadows_upper":2,"shadow_dimension":5,"p":0.5},
+    "MultiRandomShadow": {}
+}
