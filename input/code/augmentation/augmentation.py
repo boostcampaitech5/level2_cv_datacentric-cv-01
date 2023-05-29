@@ -374,6 +374,9 @@ aug_dict = {
                         A.RandomShadow((0,0.5,0.5,1)),
                         A.RandomShadow((0.5,0.5,1,1))]
 }
+
+def change_config(config,target_aug):
+    aug_dict[target_aug]=partial(aug_dict[target_aug],**config[target_aug])
 def process_augmentation(img,vertices,labels,aug_list:list):
     """aug_list에 따른 자동 augmentation 적용 함수
         aug_wth_bbox: bbox도 변환이 필요한 augmentation\n

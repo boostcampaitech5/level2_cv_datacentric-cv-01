@@ -8,6 +8,7 @@ from visualization_tool import *
 from img_bbox_tools import *
 from PIL import Image
 import sys
+import numpy as np
 sys.path.insert(0,"..")
 from dataset import SceneTextDataset
 
@@ -89,6 +90,7 @@ def main():
     if aug_checkbox_Resize:
         rs = st.sidebar.slider("Resize Scale",100,2500,2048)
         aug_config["Resize"]["size"] = rs
+        change_config(aug_config,"Resize")
         st.session_state.new_aug_list.append("Resize")
         # st.write(rs)
         
@@ -96,18 +98,21 @@ def main():
     if aug_checkbox_AdjustHeight:
         hr = st.sidebar.slider("Height Ratio * 10",0,10,2)
         st.session_state.new_aug_list.append("AdjustHeight")
+        change_config(aug_config,"AdjustHeight")
         aug_config["AdjustHeight"]["ratio"]=hr/10
         
     aug_rotate = st.sidebar.checkbox("Rotate",key = "Rotate")
     if aug_rotate:
         rotate_s = st.sidebar.slider("Angle Range",0,360,10)
         aug_config["Rotate"]["angle_range"] = rotate_s
+        change_config(aug_config,"Rotate")
         st.session_state.new_aug_list.append("Rotate")
         
     aug_crop = st.sidebar.checkbox("Crop",key="Crop")
     if aug_crop:
         cs = st.sidebar.slider("Crop Scale",0,2500,1024)
         aug_config["Crop"]["length"]=cs
+        change_config(aug_config,"Crop")
         st.session_state.new_aug_list.append("Crop")
         
     # 꼭 저장돼야함
@@ -117,19 +122,22 @@ def main():
     aug_random_shadow = st.sidebar.checkbox("RandomShadow",key="RandomShadow")
     if aug_random_shadow:
         st.session_state.aug_dict["RandomShadow"] = True
-        s_roi = st.sidebar.slider("shadow_roi * 10",0,10,0)/10
-        # st.write(type(s_roi))
+        s_roi1 = st.sidebar.slider("shadow_roi * 10",0,10,0)/10
         s_roi2 = st.sidebar.slider("2",0,10,5)/10
         s_roi3 = st.sidebar.slider("3",0,10,5)/10
         s_roi4 = st.sidebar.slider("4",0,10,10)/10
-        aug_config["RandomShadow"]['shadow_roi'] = [s_roi,s_roi2,s_roi3,s_roi4]
-        st.write(aug_config["RandomShadow"]['shadow_roi'])
+        aug_config["RandomShadow"]['shadow_roi'] = [s_roi1,s_roi2,s_roi3,s_roi4]
+        # st.write(aug_config["RandomShadow"]['shadow_roi'])
+        # st.write(aug_config["RandomShadow"]['shadow_roi'])
         num_shadows_lower = st.sidebar.slider("num_shadows_lower",0,10,1)
         aug_config["RandomShadow"]['num_shadows_lower'] = num_shadows_lower
         num_shadows_upper = st.sidebar.slider("num_shadows_upper",0,10,2)
         aug_config["RandomShadow"]['num_shadows_upper'] = num_shadows_upper
         shadow_dimension = st.sidebar.slider("shadow_dimension",0,10,5)
         aug_config["RandomShadow"]['shadow_dimension'] = shadow_dimension
+        p = st.sidebar.slider("p",0,10,5) / 10
+        aug_config["RandomShadow"]['p'] = p
+        change_config(aug_config,"RandomShadow")
         st.session_state.new_aug_list.append("RandomShadow")
         
         
@@ -145,40 +153,32 @@ def main():
         aug_config["ColorJitter"]["saturation"] = saturation
         aug_config["ColorJitter"]["hue"] = hue
         aug_config["ColorJitter"]["p"] = p
+        change_config(aug_config,"ColorJitter")
         st.session_state.new_aug_list.append("ColorJitter")
         
-    aug_normalize = st.sidebar.checkbox("Normalize",key="Normalize")
-    if aug_normalize:
-        mean = st.sidebar.slider("mean",0,10,5)/10
-        std = st.sidebar.slider("std",0,10,5)/10
-        aug_config["Normalize"]["mean"] = mean
-        aug_config["Normalize"]["std"] = std
-        st.session_state.new_aug_list.append("Normalize")
+    #TODO normalize 에러 수정
+    # aug_normalize = st.sidebar.checkbox("Normalize",key="Normalize")
+    # if aug_normalize:
+    #     mean = st.sidebar.slider("mean",0,10,5)/10
+    #     std = st.sidebar.slider("std",1,10,5)/10
+    #     aug_config["Normalize"]["mean"] = mean
+    #     aug_config["Normalize"]["std"] = std
+    #     change_config(aug_config,"Normalize")
+    #     st.session_state.new_aug_list.append("Normalize")
     
-    # aug_dict_for_getting_dataset = dict()
-    # for aug,value in st.session_state.aug_dict.items():
-    #     if value == False:
-    #         continue
-    #     elif True:
-    #         # dict
-    #         pass
-    st.write(st.session_state.new_aug_list)
     st.session_state.dataset.aug_list = st.session_state.new_aug_list  
-    st.write(st.session_state.dataset.aug_list)
       
     if bounding_box:    # bounding box 보이기
         if os.path.exists(os.path.join(saved_folder,"train",target_img)):
             pass
         else:
             save_image_with_bbox(img_path,"train", target_img,target_img_points)
-        #TODO dataset에서 이미지 뜯어올 때 check_bbox면 저장된 폴더에서 뜯어오게
-        # st.session_state.dataset.root_dir=saved_root
         st.session_state.dataset.image_dir = os.path.join(saved_root, 'img', "train")
     else:   # bounding box 없는 원본 이미지 보기
-        # st.session_state.dataset.root_dir=root_dir
         st.session_state.dataset.image_dir = os.path.join(root_dir, 'img', "train")
     fig,_,_ = st.session_state.dataset[st.session_state.image_index]
-        
+    #TODO Normalize 적용 에러 수정
+    # fig=np.clip(0,1,fig/255)
     st.image(fig)
 
 
