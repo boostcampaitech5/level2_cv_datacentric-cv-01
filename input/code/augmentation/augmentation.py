@@ -348,7 +348,7 @@ def AnotationMasking(img,vertices):
         draw.polygon(v, fill=(0,0,0))
 
     
-with open('./aug_config.json','r') as f:
+with open('/opt/ml/level2_cv_datacentric-cv-01/input/code/augmentation/aug_config.json','r') as f:
     aug_config = json.load(f)
 
 
