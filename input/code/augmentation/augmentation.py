@@ -397,7 +397,6 @@ def process_augmentation(img,vertices,labels,aug_list:list):
     """    
 
     for augmentation in aug_list:
-        print(augmentation)
         if augmentation in aug_with_bbox:
             img,vertices = aug_dict[augmentation](img=img,vertices=vertices)
         elif augmentation in aug_with_label:
