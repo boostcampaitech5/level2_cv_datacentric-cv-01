@@ -356,6 +356,7 @@ aug_with_bbox = ['Resize','Rotate','AdjustHeight']
 aug_with_label = ['Crop']
 aug_album_img = ['Normalize','ColorJitter','Sharpen','Emboss','CLAHE','RandomShadow','MultiRandomShadow']
 aug_only_img = ['ToNumpy','OnlyBlack']
+
 aug_dict = {
     'Resize': partial(resize_img,**aug_config['Resize']),
     'Rotate': partial(rotate_img,**aug_config['Rotate']),
@@ -374,6 +375,8 @@ aug_dict = {
                         A.RandomShadow((0,0.5,0.5,1)),
                         A.RandomShadow((0.5,0.5,1,1))]
 }
+def change_config(config,target_aug):
+    aug_dict[target_aug]=partial(aug_dict[target_aug],**config[target_aug])
 def process_augmentation(img,vertices,labels,aug_list:list):
     """aug_list에 따른 자동 augmentation 적용 함수
         aug_wth_bbox: bbox도 변환이 필요한 augmentation\n
