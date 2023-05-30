@@ -16,6 +16,8 @@ from dataset import SceneTextDataset
 from scheduler import CustomScheduler
 from model import EAST
 
+from utils import set_seed
+
 
 def parse_args():
     parser = ArgumentParser()
@@ -101,7 +103,6 @@ def do_training(
         "optimizer": optimizer,
         "T_max": max_epoch // 3 + (1 if max_epoch % 3 else 0),
         "eta_min": 0.00001,
-        "verbose": True,
     }
     # CustomScheduler로 설정
     scheduler = CustomScheduler(
@@ -154,6 +155,8 @@ def do_training(
 
 def main(args):
     torch.cuda.empty_cache()
+    seed = 5025
+    set_seed(seed)
     do_training(**args.__dict__)
 
 

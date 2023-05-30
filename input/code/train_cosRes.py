@@ -40,7 +40,7 @@ def parse_args():
     parser.add_argument("--image_size", type=int, default=2048)
     parser.add_argument("--input_size", type=int, default=1024)
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--learning_rate", type=float, default=1e-3)
+    parser.add_argument("--learning_rate", type=float, default=1e-5)
     parser.add_argument("--max_epoch", type=int, default=150)
     parser.add_argument("--save_interval", type=int, default=5)
     parser.add_argument(
@@ -98,14 +98,19 @@ def do_training(
     model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    # Step LR의 학습률을 2번 하락으로 변경
+    # CosAnn로 변경
     scheduler_params = {
         "optimizer": optimizer,
-        "milestones": [max_epoch // 2, (max_epoch * 2) // 3],
-        "gamma": 0.1,
+        "T_0": max_epoch // 3 + (1 if max_epoch % 3 else 0),
+        "T_mult": 1,
+        "eta_max": 0.001,
+        "T_up": 1,
+        "gamma": 0.5,
     }
     # CustomScheduler로 설정
-    scheduler = CustomScheduler(scheduler_name="MultiStepLR", params=scheduler_params)
+    scheduler = CustomScheduler(
+        scheduler_name="CosineAnnealingWarmUpRestarts", params=scheduler_params
+    )
 
     model.train()
     for epoch in range(max_epoch):
