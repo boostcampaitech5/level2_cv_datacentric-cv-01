@@ -98,7 +98,7 @@ def do_training(
         polygon_masking=False
     )
     dataset = EASTDataset(dataset)
-    num_batches = math.ceil(len(dataset) / batch_size)
+    num_batches = math.ceil(len(dataset) / batch_size)-1
 
     val_size = 8
     train_size = len(dataset)- val_size
@@ -133,7 +133,7 @@ def do_training(
     now = datetime.now().strftime('%y%m%d_%H%M_')
     run_name = now + 'epochs' + str(max_epoch)
     wandb_config = {"epochs": max_epoch, "batch_size": batch_size}
-    wandb.init(project="jhj",config=wandb_config, entity='boostcamp_cv_01', name=run_name)
+    wandb.init(project="dk",config=wandb_config, entity='boostcamp_cv_01', name=run_name)
 
     wandb_artifact = wandb.Artifact('ocr', type='model')
     wandb_artifact_paths = os.path.join(wandb.run.dir, "artifacts")
@@ -188,7 +188,6 @@ def do_training(
                 epoch_loss / num_batches, timedelta(seconds=time.time() - epoch_start)
             )
         )
-
         # validation은 20 이후부터 val_interval 마다 진행
         if epoch+1 >= 20 and (epoch + 1) % val_interval == 0:
 
@@ -210,8 +209,8 @@ def do_training(
                 gt_bboxes = map_to_bbox(gt_score.cpu().numpy(), gt_geo.cpu().numpy())
 
                 # calculate metric by deteval with bboxes
-                deteval = calc_deteval_metrics(dict(zip([range(len(pred_bboxes))], pred_bboxes)),
-                                                dict(zip([range(len(gt_bboxes))], gt_bboxes)))
+                deteval = calc_deteval_metrics(dict(zip(list(range(len(pred_bboxes))), pred_bboxes)),
+                                                dict(zip(list(range(len(gt_bboxes))), gt_bboxes)))
 
                 val_precision.append(deteval['total']['precision'])
                 val_recall.append(deteval['total']['recall'])
@@ -231,17 +230,18 @@ def do_training(
                     'F1' : f1,
             })
 
-        if epoch == 0:  # loss_record 초기화
-            loss_record = epoch_loss / num_batches
+        if epoch+1>=20 and (epoch+1)%save_interval==0:
+            if epoch == 0:  # loss_record 초기화
+                f1_record = f1
 
-        if loss_record > (epoch_loss / num_batches):  # best 모델 저장
-            ckpt_fpath = osp.join(model_dir, "best.pth")
-            torch.save(model.state_dict(), ckpt_fpath)
-            loss_record = epoch_loss / num_batches
+            if f1_record > (f1):  # best 모델 저장
+                ckpt_fpath = osp.join(model_dir, "best.pth")
+                torch.save(model.state_dict(), ckpt_fpath)
+                f1_record = f1
 
-        if (epoch + 1) % save_interval == 0:
-            ckpt_fpath = osp.join(model_dir, f"epoch{epoch+1}.pth")
-            torch.save(model.state_dict(), ckpt_fpath)
+            if (epoch + 1) % save_interval == 0:
+                ckpt_fpath = osp.join(model_dir, f"epoch{epoch+1}.pth")
+                torch.save(model.state_dict(), ckpt_fpath)
 
         if epoch + 1 == max_epoch:  # 마지막 모델 저장
             ckpt_fpath = osp.join(model_dir, "latest.pth")
