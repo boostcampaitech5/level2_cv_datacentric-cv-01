@@ -74,7 +74,8 @@ def do_training(
         "Rotate",
         "Crop",
         "ToNumpy",
-        "RandomShadow",
+        "Sharpen",
+        "MultiRandomShadow",
         "ColorJitter",
         "Normalize",
     ]
@@ -84,6 +85,7 @@ def do_training(
         image_size=image_size,
         crop_size=input_size,
         ignore_tags=ignore_tags,
+        drop_under_threshold=4,
         aug_list=aug_list,
         polygon_masking=False
     )
