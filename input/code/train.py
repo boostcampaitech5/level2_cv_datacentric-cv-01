@@ -18,7 +18,7 @@ from utils import set_seed
 
 from torch.utils.data import random_split
 from deteval import calc_deteval_metrics
-from metric import map_to_bbox, save_val_result
+from utils import map_to_bbox, save_val_result
 from copy import deepcopy
 import numpy as np
 import wandb
@@ -127,11 +127,13 @@ def do_training(
     if not osp.exists(model_dir):
         os.makedirs(model_dir)
 
+    # wandb
     wandb_config = {"epochs": max_epoch, "batch_size": batch_size,}
     wandb.init(project="level2) DataCentric",config=wandb_config)
 
     wandb_artifact = wandb.Artifact('ocr', type='model')
-    wandb_artifact_paths = os.path.join(wandb.run.dir, "artifacts/")
+    wandb_artifact_paths = os.path.join(wandb.run.dir, "artifacts")
+    os.mkdir(wandb_artifact_paths)
     wandb_artifact.add_dir(wandb_artifact_paths)
     wandb.log_artifact(wandb_artifact)
 
@@ -183,8 +185,8 @@ def do_training(
             )
         )
 
-        # validation이 너무 오래 걸려서 val_interval 마다 진행
-        if (epoch + 1) % 1 == 0:
+        # validation은 20 이후부터 val_interval 마다 진행
+        if epoch+1 >= 20 and (epoch + 1) % val_interval == 0:
 
             print(f'[Validation {epoch+1}]')
             val_start = time.time()
@@ -193,8 +195,6 @@ def do_training(
             val_f1 = []
 
             for img, gt_score_map, gt_geo_map, roi_mask in val_loader:
-                # get original sizes from image batch
-                
                 # predict 
                 with torch.no_grad():
                     score, geo = model(img.to(device))
@@ -213,8 +213,8 @@ def do_training(
                 val_recall.append(deteval['total']['recall'])
                 val_f1.append(deteval['total']['hmean'])
                 
-                save_val_result(img.cpu().numpy(), score.cpu().numpy(), 
-                                geo.cpu().numpy(), pred_bboxes, wandb_artifact_paths)
+                # save and log outputs
+                save_val_result(img.cpu().numpy(), pred_bboxes, wandb_artifact_paths)
 
             precision = np.sum(val_precision) / len(val_precision)
             recall = np.sum(val_recall) / len(val_recall)
