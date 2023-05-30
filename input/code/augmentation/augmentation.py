@@ -378,19 +378,13 @@ aug_dict = {
                         A.RandomShadow((0,0.5,0.5,1)),
                         A.RandomShadow((0.5,0.5,1,1))]
 }
-album_class={
-    'CLAHE': A.CLAHE,
-    'Emboss': A.Emboss,
-    'Normalize': A.Normalize,
-    'Sharpen': A.Sharpen,
-    'RandomShadow': A.RandomShadow
-}
 
 def change_config(config,target_aug):
     if isinstance(aug_dict[target_aug],partial):
         aug_dict[target_aug]=partial(aug_dict[target_aug],**config[target_aug])
     else:
-        aug_dict[target_aug]=album_class[target_aug](**config[target_aug])
+        for attr in config[target_aug]:
+            setattr(aug_dict[target_aug],attr,config[target_aug][attr])
 def process_augmentation(img,vertices,labels,aug_list:list):
     """aug_list에 따른 자동 augmentation 적용 함수
         aug_wth_bbox: bbox도 변환이 필요한 augmentation\n
