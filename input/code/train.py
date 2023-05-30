@@ -20,6 +20,7 @@ from torch.utils.data import random_split
 from deteval import calc_deteval_metrics
 from utils import map_to_bbox, save_val_result
 from copy import deepcopy
+from datetime import datetime
 import numpy as np
 import wandb
 
@@ -128,8 +129,10 @@ def do_training(
         os.makedirs(model_dir)
 
     # wandb
-    wandb_config = {"epochs": max_epoch, "batch_size": batch_size,}
-    wandb.init(project="jhj",config=wandb_config, entity='boostcamp_cv_01')
+    now = datetime.now().strftime('%y%m%d_%H%M_')
+    run_name = now + 'epochs' + str(max_epoch)
+    wandb_config = {"epochs": max_epoch, "batch_size": batch_size}
+    wandb.init(project="jhj",config=wandb_config, entity='boostcamp_cv_01', name=run_name)
 
     wandb_artifact = wandb.Artifact('ocr', type='model')
     wandb_artifact_paths = os.path.join(wandb.run.dir, "artifacts")
