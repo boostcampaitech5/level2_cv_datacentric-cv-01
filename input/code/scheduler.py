@@ -3,7 +3,8 @@ import math
 
 from torch import cuda
 from torch.optim import lr_scheduler
-from torch.optim.lr_scheduler import _LRScheduler
+from torch.optim.optimizer import Optimizer
+from torch.optim.lr_scheduler import _LRScheduler, CosineAnnealingLR
 from model import EAST
 
 
@@ -84,11 +85,32 @@ class CosineAnnealingWarmUpRestarts(_LRScheduler):
             param_group["lr"] = lr
 
 
+class FixedCosAnn(_LRScheduler):
+    def __init__(
+        self,
+        optimizer: Optimizer,
+        fix_epoch,
+        T_max: int,
+        eta_min: float = ...,
+        last_epoch: int = ...,
+    ) -> None:
+        self.cosAnn = CosineAnnealingLR(
+            optimizer=optimizer, T_max=T_max, eta_min=eta_min, last_epoch=last_epoch
+        )
+        self.fix_epoch = fix_epoch
+
+    def step(self, epoch) -> None:
+        if epoch >= self.fix_epoch:
+            return self.cosAnn.step()
+
+
 class CustomScheduler:
     def __init__(self, scheduler_name, params: dict) -> None:
         try:
             if scheduler_name == "CosineAnnealingWarmUpRestarts":
                 self.scheduler = CosineAnnealingWarmUpRestarts(**params)
+            elif scheduler_name == "FixedCosAnn":
+                self.scheduler = FixedCosAnn(**params)
             else:
                 scheduler_class = getattr(lr_scheduler, scheduler_name)
                 self.scheduler = scheduler_class(**params)

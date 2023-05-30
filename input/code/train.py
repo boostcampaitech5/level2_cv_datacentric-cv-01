@@ -16,6 +16,13 @@ from model import EAST
 
 from utils import set_seed
 
+from torch.utils.data import random_split
+from deteval import calc_deteval_metrics
+from utils import map_to_bbox, save_val_result
+from copy import deepcopy
+from datetime import datetime
+import numpy as np
+import wandb
 
 def parse_args():
     parser = ArgumentParser()
@@ -46,6 +53,7 @@ def parse_args():
         type=list,
         default=["masked", "excluded-region", "maintable", "stamp"],
     )
+    parser.add_argument("--val_interval", type=int, default=5)
 
     args = parser.parse_args()
 
@@ -67,6 +75,7 @@ def do_training(
     max_epoch,
     save_interval,
     ignore_tags,
+    val_interval,
 ):
     aug_list = [
         "Resize",
@@ -89,9 +98,24 @@ def do_training(
     )
     dataset = EASTDataset(dataset)
     num_batches = math.ceil(len(dataset) / batch_size)
+
+    val_size = 8
+    train_size = len(dataset)- val_size
+    train_dataset, val_dataset = random_split(dataset, [train_size,val_size])
+
     train_loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers
     )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers
+    )   
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = EAST()
@@ -104,10 +128,25 @@ def do_training(
     if not osp.exists(model_dir):
         os.makedirs(model_dir)
 
+    # wandb
+    now = datetime.now().strftime('%y%m%d_%H%M_')
+    run_name = now + 'epochs' + str(max_epoch)
+    wandb_config = {"epochs": max_epoch, "batch_size": batch_size}
+    wandb.init(project="jhj",config=wandb_config, entity='boostcamp_cv_01', name=run_name)
+
+    wandb_artifact = wandb.Artifact('ocr', type='model')
+    wandb_artifact_paths = os.path.join(wandb.run.dir, "artifacts")
+    os.mkdir(wandb_artifact_paths)
+    wandb_artifact.add_dir(wandb_artifact_paths)
+    wandb.log_artifact(wandb_artifact)
+
     model.train()
     for epoch in range(max_epoch):
         epoch_loss, epoch_start = 0, time.time()
         with tqdm(total=num_batches) as pbar:
+            cls_losses = []
+            angle_losses = []
+            iou_losses = []
             for img, gt_score_map, gt_geo_map, roi_mask in train_loader:
                 pbar.set_description("[Epoch {}]".format(epoch + 1))
 
@@ -128,6 +167,18 @@ def do_training(
                     "IoU loss": extra_info["iou_loss"],
                 }
                 pbar.set_postfix(val_dict)
+                cls_losses.append(extra_info["cls_loss"])
+                angle_losses.append(extra_info["angle_loss"])
+                iou_losses.append(extra_info["iou_loss"])
+
+        cls_loss = np.sum(cls_losses) / len(cls_losses)
+        angle_loss = np.sum(angle_losses) / len(angle_losses)
+        iou_loss = np.sum(iou_losses) / len(iou_losses)
+        wandb.log({
+            'Train Cls Loss': cls_loss,
+            'Train Angle Loss': angle_loss,
+            'Train IoU Loss': iou_loss,
+        })
 
         scheduler.step()
 
@@ -136,6 +187,48 @@ def do_training(
                 epoch_loss / num_batches, timedelta(seconds=time.time() - epoch_start)
             )
         )
+
+        # validation은 20 이후부터 val_interval 마다 진행
+        if epoch+1 >= 20 and (epoch + 1) % val_interval == 0:
+
+            print(f'[Validation {epoch+1}]')
+            val_start = time.time()
+            val_precision=[]
+            val_recall=[]
+            val_f1 = []
+
+            for img, gt_score_map, gt_geo_map, roi_mask in val_loader:
+                # predict 
+                with torch.no_grad():
+                    score, geo = model(img.to(device))
+                score, geo = deepcopy(score), deepcopy(geo)
+
+                # extract bboxes from score map and geo map
+                pred_bboxes = map_to_bbox(score.cpu().numpy(), geo.cpu().numpy())
+                gt_score, gt_geo = deepcopy(gt_score_map), deepcopy(gt_geo_map)
+                gt_bboxes = map_to_bbox(gt_score.cpu().numpy(), gt_geo.cpu().numpy())
+
+                # calculate metric by deteval with bboxes
+                deteval = calc_deteval_metrics(dict(zip([range(len(pred_bboxes))], pred_bboxes)),
+                                                dict(zip([range(len(gt_bboxes))], gt_bboxes)))
+
+                val_precision.append(deteval['total']['precision'])
+                val_recall.append(deteval['total']['recall'])
+                val_f1.append(deteval['total']['hmean'])
+                
+                # save and log outputs
+                save_val_result(img.cpu().numpy(), pred_bboxes, wandb_artifact_paths)
+
+            precision = np.sum(val_precision) / len(val_precision)
+            recall = np.sum(val_recall) / len(val_recall)
+            f1 = np.sum(val_f1) / len(val_f1)
+            print(f'F1 : {f1:.4f} | Precision : {precision:.4f} | Recall : {recall:.4f}')
+            print(f'Validation Elapsed time: {timedelta(seconds=time.time() - val_start)}')
+            wandb.log({
+                    'Precision': precision,
+                    'Recall': recall,
+                    'F1' : f1,
+            })
 
         if epoch == 0:  # loss_record 초기화
             loss_record = epoch_loss / num_batches
@@ -152,6 +245,8 @@ def do_training(
         if epoch + 1 == max_epoch:  # 마지막 모델 저장
             ckpt_fpath = osp.join(model_dir, "latest.pth")
             torch.save(model.state_dict(), ckpt_fpath)
+
+    wandb.finish()
 
 
 def main(args):
