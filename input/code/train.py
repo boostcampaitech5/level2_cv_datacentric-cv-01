@@ -230,7 +230,7 @@ def do_training(
                     'F1' : f1,
             })
 
-        if epoch+1>=20 and (epoch+1)%save_interval==0:
+        if epoch+1>=20 and (epoch+1)%val_interval==0:
             if epoch == 0:  # loss_record 초기화
                 f1_record = f1
 
@@ -239,7 +239,7 @@ def do_training(
                 torch.save(model.state_dict(), ckpt_fpath)
                 f1_record = f1
 
-            if (epoch + 1) % save_interval == 0:
+            if (epoch + 1) % val_interval == 0:
                 ckpt_fpath = osp.join(model_dir, f"epoch{epoch+1}.pth")
                 torch.save(model.state_dict(), ckpt_fpath)
 
