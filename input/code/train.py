@@ -129,7 +129,7 @@ def do_training(
 
     # wandb
     wandb_config = {"epochs": max_epoch, "batch_size": batch_size,}
-    wandb.init(project="level2) DataCentric",config=wandb_config)
+    wandb.init(project="jhj",config=wandb_config, entity='boostcamp_cv_01')
 
     wandb_artifact = wandb.Artifact('ocr', type='model')
     wandb_artifact_paths = os.path.join(wandb.run.dir, "artifacts")
