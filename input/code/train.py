@@ -231,7 +231,7 @@ def do_training(
             })
 
         if epoch+1>=20 and (epoch+1)%val_interval==0:
-            if epoch == 0:  # loss_record 초기화
+            if epoch+1 == 20:  # loss_record 초기화
                 f1_record = f1
 
             if f1_record > (f1):  # best 모델 저장
