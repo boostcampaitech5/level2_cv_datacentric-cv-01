@@ -320,7 +320,9 @@ def generate_roi_mask(image, vertices, labels):
 def ToNumpy(img:Image.Image):
     if img.mode !='RGB':
         img = img.convert('RGB')
-    img = np.array(img)
+    # img=np.array(img)
+    img = np.array(img).astype(np.float32)
+    img = img/255
     return img
 
 def OnlyBlack(img,cal_type="Sum",cut_val=300):
@@ -335,6 +337,7 @@ def OnlyBlack(img,cal_type="Sum",cut_val=300):
         new_img = np.zeros(img.shape,dtype=np.uint8)
         new_img[mask]=250
     elif img.dtype==np.float32:
+        print('float')
         mask = np.where(pixel_sum>cut_val/255,True,False)
         new_img = np.zeros(img.shape,dtype=np.uint8)
         new_img[mask]=250/255
