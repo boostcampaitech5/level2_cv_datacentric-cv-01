@@ -157,16 +157,21 @@ def main():
         change_config(aug_config,"ColorJitter")
         st.session_state.new_aug_list.append("ColorJitter")
         
-    #TODO normalize 에러 수정
-    # aug_normalize = st.sidebar.checkbox("Normalize",key="Normalize")
-    # if aug_normalize:
-    #     mean = st.sidebar.slider("mean",0,10,5)/10
-    #     std = st.sidebar.slider("std",1,10,5)/10
-    #     aug_config["Normalize"]["mean"] = mean
-    #     aug_config["Normalize"]["std"] = std
-    #     change_config(aug_config,"Normalize")
-    #     st.session_state.new_aug_list.append("Normalize")
     
+    add_augmentation("Emboss")
+    add_augmentation("OnlyBlack")
+    add_augmentation("Sharpen")
+    add_augmentation("CLAHE")
+    
+    # TODO normalize 에러 수정
+    aug_normalize = st.sidebar.checkbox("Normalize",key="Normalize")
+    if aug_normalize:
+        mean = st.sidebar.slider("mean",0,10,5)/10
+        std = st.sidebar.slider("std",0,10,5)/10
+        aug_config["Normalize"]["mean"] = mean
+        aug_config["Normalize"]["std"] = std
+        change_config(aug_config,"Normalize")
+        st.session_state.new_aug_list.append("Normalize")
     st.session_state.dataset.aug_list = st.session_state.new_aug_list  
       
     if bounding_box:    # bounding box 보이기
@@ -178,11 +183,35 @@ def main():
     else:   # bounding box 없는 원본 이미지 보기
         st.session_state.dataset.image_dir = os.path.join(root_dir, 'img', "train")
     fig,_,_ = st.session_state.dataset[st.session_state.image_index]
+    std = np.max(fig)-np.min(fig)
+    if "Normalize" in aug_list:
+        fig = (fig-np.min(fig))/std
     #TODO Normalize 적용 에러 수정
     # fig=np.clip(0,1,fig/255)
-    st.write(aug_config)
+    
+    st.write(st.session_state.dataset.aug_list)
+    # st.write(aug_config)
     st.image(fig)
 
+# #TODO 서버간 데이터 이동 구현
+# #TODO 데이터가 들어올때마다 inference 적용하고 bbox 확인해 볼 수 있는 코드
+#     # -> 진행상황을 tqdm등으로 실시간 확인 가능하면 좋을 것 같음
+# #TODO
+    
+# page_names_to_funcs = {
+#     "—": intro,
+#     "Augmentation": Augmentation,
+#     "Mapping Demo": mapping_demo,
+#     "DataFrame Demo": data_frame_demo
+# }
+
+# demo_name = st.sidebar.selectbox("Choose a demo", page_names_to_funcs.keys())
+# page_names_to_funcs[demo_name]()
+
+def add_augmentation(augmentation:str):
+    aug = st.sidebar.checkbox(augmentation,key=augmentation)
+    if aug:
+        st.session_state.new_aug_list.append(augmentation)
 
 if __name__ == "__main__":
     main()
