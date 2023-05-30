@@ -122,10 +122,10 @@ def main():
     aug_random_shadow = st.sidebar.checkbox("RandomShadow",key="RandomShadow")
     if aug_random_shadow:
         st.session_state.aug_dict["RandomShadow"] = True
-        s_roi1 = st.sidebar.slider("shadow_roi * 10",0,10,0)/10
-        s_roi2 = st.sidebar.slider("2",0,10,5)/10
-        s_roi3 = st.sidebar.slider("3",0,10,5)/10
-        s_roi4 = st.sidebar.slider("4",0,10,10)/10
+        s_roi1 = st.sidebar.slider("x_min",0,10,0)/10
+        s_roi2 = st.sidebar.slider("y_min",0,10,5)/10
+        s_roi3 = st.sidebar.slider("x_max",0,10,5)/10
+        s_roi4 = st.sidebar.slider("y_max",0,10,10)/10
         aug_config["RandomShadow"]['shadow_roi'] = [s_roi1,s_roi2,s_roi3,s_roi4]
         # st.write(aug_config["RandomShadow"]['shadow_roi'])
         # st.write(aug_config["RandomShadow"]['shadow_roi'])
@@ -137,6 +137,7 @@ def main():
         aug_config["RandomShadow"]['shadow_dimension'] = shadow_dimension
         p = st.sidebar.slider("p",0,10,5) / 10
         aug_config["RandomShadow"]['p'] = p
+        # st.write(aug_config["RandomShadow"])
         change_config(aug_config,"RandomShadow")
         st.session_state.new_aug_list.append("RandomShadow")
         
@@ -179,6 +180,7 @@ def main():
     fig,_,_ = st.session_state.dataset[st.session_state.image_index]
     #TODO Normalize 적용 에러 수정
     # fig=np.clip(0,1,fig/255)
+    st.write(aug_config)
     st.image(fig)
 
 

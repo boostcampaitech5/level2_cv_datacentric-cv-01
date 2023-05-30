@@ -320,7 +320,9 @@ def generate_roi_mask(image, vertices, labels):
 def ToNumpy(img:Image.Image):
     if img.mode !='RGB':
         img = img.convert('RGB')
-    img = np.array(img)
+    # img=np.array(img)
+    img = np.array(img).astype(np.float32)
+    img = img/255
     return img
 
 def OnlyBlack(img,cal_type="Sum",cut_val=300):
@@ -335,6 +337,7 @@ def OnlyBlack(img,cal_type="Sum",cut_val=300):
         new_img = np.zeros(img.shape,dtype=np.uint8)
         new_img[mask]=250
     elif img.dtype==np.float32:
+        print('float')
         mask = np.where(pixel_sum>cut_val/255,True,False)
         new_img = np.zeros(img.shape,dtype=np.uint8)
         new_img[mask]=250/255
@@ -356,6 +359,7 @@ aug_with_bbox = ['Resize','Rotate','AdjustHeight']
 aug_with_label = ['Crop']
 aug_album_img = ['Normalize','ColorJitter','Sharpen','Emboss','CLAHE','RandomShadow','MultiRandomShadow']
 aug_only_img = ['ToNumpy','OnlyBlack']
+
 aug_dict = {
     'Resize': partial(resize_img,**aug_config['Resize']),
     'Rotate': partial(rotate_img,**aug_config['Rotate']),
@@ -374,7 +378,6 @@ aug_dict = {
                         A.RandomShadow((0,0.5,0.5,1)),
                         A.RandomShadow((0.5,0.5,1,1))]
 }
-
 def change_config(config,target_aug):
     aug_dict[target_aug]=partial(aug_dict[target_aug],**config[target_aug])
 def process_augmentation(img,vertices,labels,aug_list:list):

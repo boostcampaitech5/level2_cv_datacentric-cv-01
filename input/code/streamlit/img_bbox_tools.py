@@ -7,7 +7,7 @@ import cv2
 
 from streamlit_app import img_df
 
-saved_image_folder = "./saved_img_with_bbox"
+saved_image_folder = "./saved_img_with_bbox/img"
 def save_image_with_bbox(img_path:os.path,dataset:str,image_id,img_bbox,saving_path=saved_image_folder) -> None:
     '''
     이미지를 bbox를 포함하여 저장하는 함수
