@@ -13,3 +13,4 @@ input/code/wandb/
 input/code/augmentation/__pycache__/
 input/backup
 input/data
+output/
