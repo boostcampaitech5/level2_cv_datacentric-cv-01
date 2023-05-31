@@ -22,6 +22,7 @@ saved_folder = "./saved_img_with_bbox/img"
 img_df = json_to_df()
 img_id_list = find_list_of_imgs() # 이미지들 이름 저장
 total_imgs = count_imgs()
+# data_dir = "../../data/medical/img"
 aug_list = ["Resize",
     "AdjustHeight",
     "Rotate",
@@ -35,6 +36,7 @@ st.session_state.dataset = SceneTextDataset(
         split="train",
         image_size=2048,
         crop_size=1024,
+        # ignore_tags=ignore_tags,
         aug_list=aug_list,
     )
 
@@ -42,6 +44,8 @@ def main():
     if 'image_index' not in st.session_state:
         st.session_state.image_index = 0
         
+        
+
     col_prev_btn,col_saving_btn,col_next_btn = st.columns([2,2,1])
     col_text_input,col_move_with_index_btn,col_move_with_img_id = st.columns([2,1,1])
 
@@ -71,17 +75,24 @@ def main():
     target_img = img_id_list[st.session_state.image_index]
     target_img_points = img_df[target_img]
 
+    #TODO augmentation을 checkbox로 적용 전과 후를 확인할 수 있는 기능 구현
+    # dict형식인데 False면 참고 안하게?
+
     st.session_state.aug_dict = {i : False for i in aug_list}
-    st.session_state.new_aug_list = []
+    # Not False로 하면 될 것
     
-    # bounding box를 표시할지 말지 여부를 나타내는 checkbox
-    bounding_box = st.sidebar.checkbox("bounding_box",key="bounding_box")   
+    # with open('../augmentation/aug_config.json','r')as f:
+    #     aug_config = json.load(f)
+    
+    st.session_state.new_aug_list = []
+    bounding_box = st.sidebar.checkbox("bounding_box",key="bounding_box")   # bounding box를 표시할지 말지 여부를 나타내는 checkbox
     aug_checkbox_Resize = st.sidebar.checkbox("Resize",key="Resize")
     if aug_checkbox_Resize:
         rs = st.sidebar.slider("Resize Scale",100,2500,2048)
         aug_config["Resize"]["size"] = rs
         change_config(aug_config,"Resize")
         st.session_state.new_aug_list.append("Resize")
+        # st.write(rs)
         
     aug_checkbox_AdjustHeight = st.sidebar.checkbox("AdjustHeight",key="AdjustHeight")
     if aug_checkbox_AdjustHeight:
@@ -105,16 +116,19 @@ def main():
         st.session_state.new_aug_list.append("Crop")
         
     # 꼭 저장돼야함
+    # st.session_state.aug_dict["ToNumpy"] = True
     st.session_state.new_aug_list.append("ToNumpy")
     
     aug_random_shadow = st.sidebar.checkbox("RandomShadow",key="RandomShadow")
     if aug_random_shadow:
         st.session_state.aug_dict["RandomShadow"] = True
-        s_roi1 = st.sidebar.slider("x_min",0,10,0)/10
-        s_roi2 = st.sidebar.slider("y_min",0,10,5)/10
-        s_roi3 = st.sidebar.slider("x_max",0,10,5)/10
-        s_roi4 = st.sidebar.slider("y_max",0,10,10)/10
+        s_roi1 = st.sidebar.slider("shadow_roi * 10",0,10,0)/10
+        s_roi2 = st.sidebar.slider("2",0,10,5)/10
+        s_roi3 = st.sidebar.slider("3",0,10,5)/10
+        s_roi4 = st.sidebar.slider("4",0,10,10)/10
         aug_config["RandomShadow"]['shadow_roi'] = [s_roi1,s_roi2,s_roi3,s_roi4]
+        # st.write(aug_config["RandomShadow"]['shadow_roi'])
+        # st.write(aug_config["RandomShadow"]['shadow_roi'])
         num_shadows_lower = st.sidebar.slider("num_shadows_lower",0,10,1)
         aug_config["RandomShadow"]['num_shadows_lower'] = num_shadows_lower
         num_shadows_upper = st.sidebar.slider("num_shadows_upper",0,10,2)
@@ -134,31 +148,24 @@ def main():
         saturation = st.sidebar.slider("saturation * 10",0,10,2)/10
         hue = st.sidebar.slider("hue * 10",0,10,2)/10
         p = st.sidebar.slider("p * 10",0,10,5)/10
-        aug_config["ColorJitter"]["brightness"] = [1-brightness,1+brightness]
-        aug_config["ColorJitter"]["contrast"] = [1-contrast,1+contrast]
-        aug_config["ColorJitter"]["saturation"] = [1-saturation,1+saturation]
-        aug_config["ColorJitter"]["hue"] = [1-hue,1+hue]
+        aug_config["ColorJitter"]["brightness"] = brightness
+        aug_config["ColorJitter"]["contrast"] = contrast
+        aug_config["ColorJitter"]["saturation"] = saturation
+        aug_config["ColorJitter"]["hue"] = hue
         aug_config["ColorJitter"]["p"] = p
         change_config(aug_config,"ColorJitter")
         st.session_state.new_aug_list.append("ColorJitter")
         
-    
-    add_augmentation("Emboss")
-    add_augmentation("OnlyBlack")
-    add_augmentation("Sharpen")
-    add_augmentation("MultiRandomShadow")
-
-    
+    #TODO normalize 에러 수정
     aug_normalize = st.sidebar.checkbox("Normalize",key="Normalize")
     if aug_normalize:
         mean = st.sidebar.slider("mean",0,10,5)/10
-        std = st.sidebar.slider("std",0,10,5)/10
+        std = st.sidebar.slider("std",1,10,5)/10
         aug_config["Normalize"]["mean"] = mean
         aug_config["Normalize"]["std"] = std
         change_config(aug_config,"Normalize")
         st.session_state.new_aug_list.append("Normalize")
-        
-    # 현재까지 추가한 aug_list들을 dataset에 적용
+    
     st.session_state.dataset.aug_list = st.session_state.new_aug_list  
       
     if bounding_box:    # bounding box 보이기
@@ -169,28 +176,18 @@ def main():
         st.session_state.dataset.image_dir = os.path.join(saved_root, 'img', "train")
     else:   # bounding box 없는 원본 이미지 보기
         st.session_state.dataset.image_dir = os.path.join(root_dir, 'img', "train")
-    fig,_,_ = st.session_state.dataset[st.session_state.image_index]
-    std = np.max(fig)-np.min(fig)
-    if "Normalize" in aug_list:
-        '''
-        denormalize하는 코드, -1부터 1까지의 값을 가져서 
-        PIL의 값을 벗어나 시각화를 진행할 수 없기 때문에
-        이 코드가 꼭 필요함.
-        '''
-        fig = (fig-np.min(fig))/std
-    # 이미지 확인
+    fig,bbox,_ = st.session_state.dataset[st.session_state.image_index]
+    
+    
+    fig = Image.fromarray(fig)
+    draw = ImageDraw.Draw(fig)
+    bbox = bbox.tolist()
+    
+    for points in bbox:
+        vertices = list(map(tuple,points))
+        draw.polygon(vertices,fill=None,outline=(255,0,0),width=3)
     st.image(fig)
 
-def add_augmentation(augmentation:str):
-    '''
-    augmentation을 시각화 하는 함수
-    '''
-    aug = st.sidebar.checkbox(augmentation,key=augmentation)
-    if aug:
-        st.session_state.new_aug_list.append(augmentation)
-        if augmentation != "OnlyBlack" and augmentation != "MultiRandomShadow":
-            aug_config[augmentation]["p"] = 1.0
-            change_config(aug_config,augmentation)
 
 if __name__ == "__main__":
     main()
