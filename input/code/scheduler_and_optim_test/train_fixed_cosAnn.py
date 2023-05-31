@@ -96,7 +96,9 @@ def do_training(
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = EAST()
     model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=learning_rate, weight_decay=1e-2
+    )
 
     # CosAnn로 변경
     scheduler_params = {
@@ -134,7 +136,7 @@ def do_training(
                 }
                 pbar.set_postfix(val_dict)
 
-        scheduler.step()
+        scheduler.step(epoch + 1)
         current_lr = optimizer.param_groups[0]["lr"]  # 학습률을 확인하기 위해 추가
 
         print(

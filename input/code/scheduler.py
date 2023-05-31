@@ -121,5 +121,5 @@ class CustomScheduler:
                 )
             )
 
-    def step(self):
-        self.scheduler.step()
+    def step(self, epoch=None):
+        self.scheduler.step(epoch)
