@@ -46,7 +46,10 @@ def save_val_result(images, pred_bboxes, save_path):
         save_path (str): path to save images
     """
     for idx in range(images.shape[0]):
-        img = (images[idx] * 255).astype(np.uint8)
+        img = images[idx]
+        img = img - np.min(img)
+        img = (img / np.max(img) * 255).astype(np.uint8)
+        img = np.clip(img, 0, 255)
         img = Image.fromarray(img.transpose(1,2,0))
         
         draw = ImageDraw.Draw(img)
