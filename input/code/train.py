@@ -85,8 +85,7 @@ def do_training(
         "Rotate",
         "Crop",
         "ToNumpy",
-        "Sharpen",
-        "MultiRandomShadow",
+        "RandomShadow",
         "ColorJitter",
         "Normalize",
     ]
@@ -139,7 +138,7 @@ def do_training(
     run_name = now + "epochs" + str(max_epoch)
     wandb_config = {"epochs": max_epoch, "batch_size": batch_size}
     wandb.init(
-        project="dk", config=wandb_config, entity="boostcamp_cv_01", name=run_name
+        project="bh", config=wandb_config, entity="boostcamp_cv_01", name=run_name
     )
 
     wandb_artifact = wandb.Artifact("ocr", type="model")
