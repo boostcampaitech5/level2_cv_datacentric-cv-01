@@ -334,16 +334,14 @@ def OnlyBlack(img,cal_type="Sum",cut_val=300):
         pixel_sum = np.average(img,axis=2)
     if img.dtype==np.uint8:
         mask = np.where(pixel_sum>cut_val,True,False)
-        new_img = np.zeros(img.shape,dtype=np.uint8)
-        new_img[mask]=250
+        img[mask]=250
     elif img.dtype==np.float32:
         print('float')
         mask = np.where(pixel_sum>cut_val/255,True,False)
-        new_img = np.zeros(img.shape,dtype=np.uint8)
-        new_img[mask]=250/255
+        img[mask]=250/255
 
 
-    return new_img
+    return img
 
 def AnotationMasking(img,vertices):
     draw = ImageDraw.Draw(img)
