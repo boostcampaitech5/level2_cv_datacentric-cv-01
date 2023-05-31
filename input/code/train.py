@@ -13,6 +13,7 @@ from tqdm import tqdm
 from east_dataset import EASTDataset
 from dataset import SceneTextDataset
 from model import EAST
+from scheduler import CustomScheduler
 
 from utils import set_seed
 
@@ -23,6 +24,7 @@ from copy import deepcopy
 from datetime import datetime
 import numpy as np
 import wandb
+
 
 def parse_args():
     parser = ArgumentParser()
@@ -95,47 +97,52 @@ def do_training(
         crop_size=input_size,
         ignore_tags=ignore_tags,
         aug_list=aug_list,
-        polygon_masking=False
+        polygon_masking=False,
     )
     dataset = EASTDataset(dataset)
-    num_batches = math.ceil(len(dataset) / batch_size)-1
+    num_batches = math.ceil(len(dataset) / batch_size) - 1
 
     val_size = 8
-    train_size = len(dataset)- val_size
-    train_dataset, val_dataset = random_split(dataset, [train_size,val_size])
+    train_size = len(dataset) - val_size
+    train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
     train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers
+        train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers
     )
 
     val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers
-    )   
+        val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers
+    )
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = EAST()
     model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-    scheduler = lr_scheduler.MultiStepLR(
-        optimizer, milestones=[max_epoch // 2], gamma=0.1
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=learning_rate, weight_decay=1e-2
     )
+    # CosAnn로 변경
+    scheduler_params = {
+        "optimizer": optimizer,
+        "fix_epoch": max_epoch // 2,
+        "T_max": max_epoch - max_epoch // 2,
+        "eta_min": 0.0001,
+        "last_epoch": -1,
+    }
+    # CustomScheduler로 설정
+    scheduler = CustomScheduler(scheduler_name="FixedCosAnn", params=scheduler_params)
 
     if not osp.exists(model_dir):
         os.makedirs(model_dir)
 
     # wandb
-    now = datetime.now().strftime('%y%m%d_%H%M_')
-    run_name = now + 'epochs' + str(max_epoch)
+    now = datetime.now().strftime("%y%m%d_%H%M_")
+    run_name = now + "epochs" + str(max_epoch)
     wandb_config = {"epochs": max_epoch, "batch_size": batch_size}
-    wandb.init(project="dk",config=wandb_config, entity='boostcamp_cv_01', name=run_name)
+    wandb.init(
+        project="dk", config=wandb_config, entity="boostcamp_cv_01", name=run_name
+    )
 
-    wandb_artifact = wandb.Artifact('ocr', type='model')
+    wandb_artifact = wandb.Artifact("ocr", type="model")
     wandb_artifact_paths = os.path.join(wandb.run.dir, "artifacts")
     os.mkdir(wandb_artifact_paths)
     wandb_artifact.add_dir(wandb_artifact_paths)
@@ -175,13 +182,15 @@ def do_training(
         cls_loss = np.sum(cls_losses) / len(cls_losses)
         angle_loss = np.sum(angle_losses) / len(angle_losses)
         iou_loss = np.sum(iou_losses) / len(iou_losses)
-        wandb.log({
-            'Train Cls Loss': cls_loss,
-            'Train Angle Loss': angle_loss,
-            'Train IoU Loss': iou_loss,
-        })
+        wandb.log(
+            {
+                "Train Cls Loss": cls_loss,
+                "Train Angle Loss": angle_loss,
+                "Train IoU Loss": iou_loss,
+            }
+        )
 
-        scheduler.step()
+        scheduler.step(epoch=epoch + 1)
 
         print(
             "Mean loss: {:.4f} | Elapsed time: {}".format(
@@ -189,16 +198,15 @@ def do_training(
             )
         )
         # validation은 20 이후부터 val_interval 마다 진행
-        if epoch+1 >= 20 and (epoch + 1) % val_interval == 0:
-
-            print(f'[Validation {epoch+1}]')
+        if epoch + 1 >= 20 and (epoch + 1) % val_interval == 0:
+            print(f"[Validation {epoch+1}]")
             val_start = time.time()
-            val_precision=[]
-            val_recall=[]
+            val_precision = []
+            val_recall = []
             val_f1 = []
 
             for img, gt_score_map, gt_geo_map, roi_mask in val_loader:
-                # predict 
+                # predict
                 with torch.no_grad():
                     score, geo = model(img.to(device))
                 score, geo = deepcopy(score), deepcopy(geo)
@@ -209,29 +217,37 @@ def do_training(
                 gt_bboxes = map_to_bbox(gt_score.cpu().numpy(), gt_geo.cpu().numpy())
 
                 # calculate metric by deteval with bboxes
-                deteval = calc_deteval_metrics(dict(zip(list(range(len(pred_bboxes))), pred_bboxes)),
-                                                dict(zip(list(range(len(gt_bboxes))), gt_bboxes)))
+                deteval = calc_deteval_metrics(
+                    dict(zip(list(range(len(pred_bboxes))), pred_bboxes)),
+                    dict(zip(list(range(len(gt_bboxes))), gt_bboxes)),
+                )
 
-                val_precision.append(deteval['total']['precision'])
-                val_recall.append(deteval['total']['recall'])
-                val_f1.append(deteval['total']['hmean'])
-                
+                val_precision.append(deteval["total"]["precision"])
+                val_recall.append(deteval["total"]["recall"])
+                val_f1.append(deteval["total"]["hmean"])
+
                 # save and log outputs
                 save_val_result(img.cpu().numpy(), pred_bboxes, wandb_artifact_paths)
 
             precision = np.sum(val_precision) / len(val_precision)
             recall = np.sum(val_recall) / len(val_recall)
             f1 = np.sum(val_f1) / len(val_f1)
-            print(f'F1 : {f1:.4f} | Precision : {precision:.4f} | Recall : {recall:.4f}')
-            print(f'Validation Elapsed time: {timedelta(seconds=time.time() - val_start)}')
-            wandb.log({
-                    'Precision': precision,
-                    'Recall': recall,
-                    'F1' : f1,
-            })
+            print(
+                f"F1 : {f1:.4f} | Precision : {precision:.4f} | Recall : {recall:.4f}"
+            )
+            print(
+                f"Validation Elapsed time: {timedelta(seconds=time.time() - val_start)}"
+            )
+            wandb.log(
+                {
+                    "Precision": precision,
+                    "Recall": recall,
+                    "F1": f1,
+                }
+            )
 
-        if epoch+1>=20 and (epoch+1)%val_interval==0:
-            if epoch+1 == 20:  # loss_record 초기화
+        if epoch + 1 >= 20 and (epoch + 1) % val_interval == 0:
+            if epoch + 1 == 20:  # loss_record 초기화
                 f1_record = f1
 
             if f1_record > (f1):  # best 모델 저장
@@ -252,7 +268,7 @@ def do_training(
 
 def main(args):
     # print(args.device)
-    seed=5025
+    seed = 5025
     set_seed(seed)
     do_training(**args.__dict__)
 
