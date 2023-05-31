@@ -368,6 +368,7 @@ aug_dict = {
     'Normalize': A.Normalize(**aug_config['Normalize']),
     'Emboss': A.Emboss(**aug_config['Emboss']),
     'AdjustHeight': partial(adjust_height,**aug_config['AdjustHeight']),
+    'ToNumpy': ToNumpy,
     'OnlyBlack': partial(OnlyBlack,**aug_config['OnlyBlack']),
     'Sharpen': A.Sharpen(**aug_config['Sharpen']),
     'CLAHE': A.CLAHE(**aug_config['CLAHE']),
