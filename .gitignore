@@ -12,13 +12,10 @@ input/code/._*
 input/code/wandb/
 input/code/augmentation/__pycache__/
 input/backup
-<<<<<<< HEAD
 input/data/
 input/code/streamlit/__pycache__
 input/code/streamlit/.ipynb_checkpoints
 input/code/streamlit/saved_img_with_bbox
 input/code/streamlit/test.py
-=======
 input/data
 output/
->>>>>>> 10bf6424a0bc0f8e26faad7278b42519960bb450
