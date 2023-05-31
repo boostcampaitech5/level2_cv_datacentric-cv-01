@@ -12,5 +12,10 @@ input/code/._*
 input/code/wandb/
 input/code/augmentation/__pycache__/
 input/backup
+input/data/
+input/code/streamlit/__pycache__
+input/code/streamlit/.ipynb_checkpoints
+input/code/streamlit/saved_img_with_bbox
+input/code/streamlit/test.py
 input/data
 output/
