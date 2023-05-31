@@ -336,7 +336,6 @@ def OnlyBlack(img,cal_type="Sum",cut_val=300):
         mask = np.where(pixel_sum>cut_val,True,False)
         img[mask]=250
     elif img.dtype==np.float32:
-        print('float')
         mask = np.where(pixel_sum>cut_val/255,True,False)
         img[mask]=250/255
 
