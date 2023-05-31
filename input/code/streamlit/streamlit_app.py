@@ -161,7 +161,7 @@ def main():
     add_augmentation("Emboss")
     add_augmentation("OnlyBlack")
     add_augmentation("Sharpen")
-    add_augmentation("CLAHE")
+    add_augmentation("MultiRandomShadow")
     
     # TODO normalize 에러 수정
     aug_normalize = st.sidebar.checkbox("Normalize",key="Normalize")
